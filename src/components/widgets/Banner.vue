@@ -2,13 +2,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 
-interface Banner {
-  id: number
-  title: string
-  image: string
-  link_url: string
-}
-
 const banners = ref<Banner[]>([])
 const currentIndex = ref(0)
 const slider = ref<HTMLElement | null>(null)
@@ -20,29 +13,33 @@ let startX = 0
 let deltaX = 0
 let isDragging = false
 
-const fetchData = async () => {
-  try {
-    const res = await fetch(BACKEND_BASE + '/banners/')
-    const data = await res.json()
-    const baseUrl = BACKEND_BASE
+import { supabase } from '@/lib/supabase'
 
-    interface BannerData {
-      id: number
-      title: string
-      image_url: string
-      link_url: string
-    }
-
-    banners.value = (data as BannerData[]).map((item) => ({
-      id: item.id,
-      title: item.title,
-      image: baseUrl + '/' + item.image_url,
-      link_url: item.link_url,
-    }))
-  } catch (error) {
-    console.error('Error fetching banners:', error)
-  }
+interface Banner {
+  id: string
+  title: string
+  image: string
+  link_url: string
 }
+
+const fetchData = async () => {
+  const { data, error } = await supabase
+    .from('banner')
+    .select('id, image_url, link')
+
+  if (error) {
+    console.error('Error fetching banners:', error)
+    return
+  }
+
+  banners.value = (data ?? []).map((item) => ({
+    id: item.id,
+    title: 'Banner', // No title in DB, so use fallback
+    image: item.image_url,
+    link_url: item.link,
+  }))
+}
+
 
 const next = () => {
   currentIndex.value = (currentIndex.value + 1) % banners.value.length

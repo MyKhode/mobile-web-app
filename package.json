@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@iconify/vue": "^5.0.0",
+    "@supabase/supabase-js": "^2.52.1",
     "@vueup/vue-quill": "^1.2.0",
     "axios": "^1.10.0",
     "browser-image-compression": "^2.0.2",

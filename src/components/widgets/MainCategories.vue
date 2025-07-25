@@ -3,8 +3,11 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 
+// Fetch categories from API
+import { supabase } from '@/lib/supabase'
+
 interface Category {
-  id: number
+  id: string
   label_name: string
   icon: string
   place_count: number
@@ -21,18 +24,22 @@ const error = ref<string | null>(null)
 // Track failed images to prevent infinite loops
 const failedImages = ref(new Set<string>())
 
-// Fetch categories from API
+
 const fetchCategories = async () => {
   try {
     loading.value = true
-    const response = await fetch(`${API_BASE_URL}/category/`)
+    const { data, error: supabaseError } = await supabase
+      .from('categories')
+      .select('id, label, image_url')
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`)
-    }
+    if (supabaseError) throw supabaseError
 
-    const data = await response.json()
-    categories.value = data
+    categories.value = (data ?? []).map((item) => ({
+      id: item.id,
+      label_name: item.label,
+      icon: item.image_url,
+      place_count: 0, // fallback since DB has no place_count
+    }))
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to fetch categories'
     console.error('Error fetching categories:', err)
@@ -85,7 +92,7 @@ const handleViewAll = () => {
 <template>
   <section class="w-full space-y-4 mt-3">
     <div class="flex items-center justify-between">
-      <h2 class="text-lg  text-gray-800 dark:text-white mb-2">កម្រងប្រភេទរឿងភាគ</h2>
+      <h2 class="text-lg  text-gray-800 dark:text-white mb-5">កម្រងប្រភេទរឿងភាគ</h2>
       <button class="text-sm text-blue-600 dark:text-blue-400 hover:underline" @click="handleViewAll"
         :disabled="loading">
         View All
@@ -112,12 +119,12 @@ const handleViewAll = () => {
     <div v-else class="grid grid-cols-5 sm:grid-cols-6 md:grid-cols-9 gap-2">
       <!-- Category cards -->
       <div v-for="item in displayedCategories" :key="item.id" class="flex flex-col items-center cursor-pointer"
-        @click="handleCategoryClick(item.id)">
+        @click="handleCategoryClick(parseInt(item.id))">
         <!-- Card Box -->
         <div
-          class="w-full aspect-square flex items-center justify-center rounded-lg bg-slate-100 shadow-md transition duration-500 hover:bg-slate-200 hover:shadow-lg relative">
-          <img :src="`${API_BASE_URL}/${item.icon}`" :alt="`${item.label_name} icon`" class="w-10 h-10 object-contain"
-            @error="handleImageError($event, item.id)" />
+          class="w-[70px] h-[70px] bg-white aspect-square flex items-center justify-center rounded-lg bg-slate-100 shadow-md transition duration-500 hover:bg-slate-200 hover:shadow-lg relative">
+          <img :src="`${item.icon}`" :alt="`${item.label_name} icon`"
+            class="w-full h-full px-1 py-1 object-cover rounded" @error="handleImageError($event, parseInt(item.id))" />
           <!-- Fallback icon when image fails -->
           <div v-if="failedImages.has(`category-${item.id}`)"
             class="w-10 h-10 flex items-center justify-center bg-gray-200 rounded absolute">
@@ -154,5 +161,6 @@ const handleViewAll = () => {
         </span>
       </div>
     </div>
+    <div class="h-20 w-full bg-black"></div>
   </section>
 </template>
